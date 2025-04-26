@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.stock_streamer import stock_data_generator, streaming_active
-from app.stock_streamer import streaming_active_event
+from app.stock_streamer import stock_data_generator, streaming_active_event
 from app.logger import logger
 import asyncio
 import json
