@@ -2,7 +2,7 @@ services:
   - type: web
     name: stock-stream-api
     env: docker
-    repo: https://github.com/your-username/your-repo-name.git
+    repo: https://github.com/srinath-varadan/PortfolioStreamingService.git
     branch: main
     dockerfilePath: ./Dockerfile
     plan: free
