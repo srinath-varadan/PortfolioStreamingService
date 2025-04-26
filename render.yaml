@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: stock-stream-api
+    env: docker
+    repo: https://github.com/your-username/your-repo-name.git
+    branch: main
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8000
