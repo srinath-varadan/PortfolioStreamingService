@@ -1,5 +1,7 @@
 import logging
+import os
 
+os.makedirs('logs', exist_ok=True)
 logger = logging.getLogger("stock_logger")
 logger.setLevel(logging.INFO)
 
