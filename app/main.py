@@ -1,12 +1,16 @@
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.stock_streamer import stock_data_generator, streaming_active_event
 from app.logger import logger
 import asyncio
 import json
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+
 
 from app.stock_streamer import stock_data_generator
+
+LOG_COUNT = Counter('python_log_entries_total', 'Total log entries received')
 
 app = FastAPI(
     title="Stock Stream Service",
@@ -41,6 +45,12 @@ async def stop_streaming():
     logger.info("Streaming manually stopped by API call")
     return {"message": "Streaming stopped"}
 
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.get("/logs", summary="Fetch current .log file")
 async def fetch_logs():
+    LOG_COUNT.inc()
     return FileResponse("logs/stock_stream.log", media_type="text/plain")
