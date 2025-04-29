@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse, FileResponse, Response,JSONResponse
+from fastapi.responses import StreamingResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request
 from app.stock_streamer import stock_data_generator, streaming_active_event
@@ -7,8 +7,8 @@ from app.logger import logger
 import asyncio
 import json
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
-import os
 import traceback
+import os
 
 
 from app.stock_streamer import stock_data_generator
@@ -35,6 +35,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    if request.method == "POST":
+        body = await request.body()
+        logger.info(f"Payload: {body.decode('utf-8')}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
+import os
+
 @app.on_event("startup")
 async def clear_logs_on_startup():
     log_file_path = "logs/stock_stream.log"
@@ -53,23 +64,28 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"error": "An unexpected error occurred. Please try again later."}
     )
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    logger.info(f"Incoming request: {request.method} {request.url}")
-    if request.method == "POST":
-        body = await request.body()
-        logger.info(f"Payload: {body.decode('utf-8')}")
-    response = await call_next(request)
-    logger.info(f"Response status: {response.status_code}")
-    return response
-
 @app.get("/stream/stocks", summary="Stream stock data in real-time")
 async def stream_stock_data():
-    async def event_generator():
-        async for stock in stock_data_generator():
-            yield f"data: {json.dumps(stock)}\n\n"
+    try:
+        async def event_generator():
+            try:
+                async for stock in stock_data_generator():
+                    yield f"data: {json.dumps(stock)}\n\n"
+            except asyncio.CancelledError:
+                logger.info("Client disconnected during streaming.")
+                raise
+            except Exception as e:
+                logger.exception(f"Error in event generator: {e}")
+                raise
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+        logger.info("Streaming started")
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+    except Exception as e:
+        logger.exception(f"Error during streaming: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "An error occurred during streaming."}
+        )
 
 @app.post("/stop", summary="Stop streaming stock data")
 async def stop_streaming():
@@ -82,7 +98,28 @@ async def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-@app.get("/logs", summary="Fetch current .log file")
-async def fetch_logs():
-    LOG_COUNT.inc()
-    return FileResponse("logs/stock_stream.log", media_type="text/plain")
+@app.get("/logs", summary="Retrieve application logs")
+async def get_logs():
+    log_file_path = "logs/stock_stream.log"
+    try:
+        if os.path.exists(log_file_path):
+            logger.info("Streaming log file in chunks.")
+            
+            async def log_file_stream():
+                with open(log_file_path, "r") as log_file:
+                    while chunk := log_file.read(1024):  # Read 1KB at a time
+                        yield chunk
+            
+            return StreamingResponse(log_file_stream(), media_type="text/plain")
+        else:
+            logger.warning("Log file not found.")
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Log file not found."}
+            )
+    except Exception as e:
+        logger.exception(f"Error while streaming log file: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "An error occurred while retrieving the log file."}
+        )
