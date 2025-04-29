@@ -8,6 +8,7 @@ import asyncio
 import json
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 import traceback
+import os
 
 
 from app.stock_streamer import stock_data_generator
@@ -43,6 +44,15 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     logger.info(f"Response status: {response.status_code}")
     return response
+import os
+
+@app.on_event("startup")
+async def clear_logs_on_startup():
+    log_file_path = "logs/stock_stream.log"
+    if os.path.exists(log_file_path):
+        with open(log_file_path, "w") as log_file:
+            log_file.truncate(0)  # Clear the contents of the log file
+    logger.info("Log file cleared on application startup")
 
 # Global exception handler
 @app.exception_handler(Exception)
