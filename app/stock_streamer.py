@@ -20,4 +20,4 @@ async def stock_data_generator():
             logger.info(f"Generated stock data: {data}")
             yield data
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
