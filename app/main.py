@@ -66,11 +66,18 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/stream/stocks", summary="Stream stock data in real-time")
 async def stream_stock_data():
-    async def event_generator():
-        async for stock in stock_data_generator():
-            yield f"data: {json.dumps(stock)}\n\n"
-    logger.info("Streaming started")
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    try:
+        async def event_generator():
+            async for stock in stock_data_generator():
+                yield f"data: {json.dumps(stock)}\n\n"
+        logger.info("Streaming started")
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+    except Exception as e:
+        logger.exception(f"Error during streaming: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "An error occurred during streaming."}
+        )
 
 @app.post("/stop", summary="Stop streaming stock data")
 async def stop_streaming():
