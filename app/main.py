@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse, FileResponse, Response
+from fastapi.responses import StreamingResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request
 from app.stock_streamer import stock_data_generator, streaming_active_event
@@ -7,6 +7,7 @@ from app.logger import logger
 import asyncio
 import json
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+import traceback
 
 
 from app.stock_streamer import stock_data_generator
@@ -43,12 +44,22 @@ async def log_requests(request: Request, call_next):
     logger.info(f"Response status: {response.status_code}")
     return response
 
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    logger.error(f"Unhandled Exception: {exc}\nTraceback:\n{tb}")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "An unexpected error occurred. Please try again later."}
+    )
+
 @app.get("/stream/stocks", summary="Stream stock data in real-time")
 async def stream_stock_data():
     async def event_generator():
         async for stock in stock_data_generator():
             yield f"data: {json.dumps(stock)}\n\n"
-
+    logger.info("Streaming started")
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.post("/stop", summary="Stop streaming stock data")
