@@ -1,39 +1,23 @@
 import asyncio
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from app.logger import logger
 
-MOCK_SYMBOLS = [
-    {"symbol": "AAPL", "color": "#FF0000"},
-    {"symbol": "GOOGL", "color": "#00FF00"},
-    {"symbol": "AMZN", "color": "#0000FF"},
-    {"symbol": "MSFT", "color": "#FFA500"},
-    {"symbol": "TSLA", "color": "#800080"}
-]
+MOCK_SYMBOLS = ["AAPL", "GOOGL", "AMZN", "MSFT", "TSLA"]
 
 # GLOBAL event to control streaming
 streaming_active_event = asyncio.Event()
 streaming_active_event.set()  # Initially streaming is allowed
 
 async def stock_data_generator():
-    start_date = datetime.utcnow()
-
-    current_date = start_date
     while streaming_active_event.is_set():
-        for entry in MOCK_SYMBOLS:
-            symbol = entry["symbol"]
-            color = entry["color"]
-            price = round(random.uniform(100, 1500), 2)
-            timestamp = current_date.isoformat()
+        for i, symbol in enumerate(MOCK_SYMBOLS):
+            price = round(random.uniform(100 + i * 50, 1500 - i * 100), 2)
+            timestamp = datetime.utcnow().isoformat()
+            color = f"hsl({(i * 72) % 360}, 70%, 50%)"  # Generate a unique color
 
-            data = {
-                "symbol": symbol,
-                "price": price,
-                "timestamp": timestamp,
-                "color": color
-            }
+            data = {"symbol": symbol, "price": price, "timestamp": timestamp, "color": color}
             logger.info(f"Generated stock data: {data}")
             yield data
 
-        current_date += timedelta(seconds=2)  # 2-second interval simulation
-        await asyncio.sleep(0)  # Yield control to event loop
+        await asyncio.sleep(2)
