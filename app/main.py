@@ -8,6 +8,7 @@ import asyncio
 import json
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 import os
+import traceback
 
 
 from app.stock_streamer import stock_data_generator
