@@ -2,22 +2,41 @@ import asyncio
 import random
 from datetime import datetime
 from app.logger import logger
+import json
 
-MOCK_SYMBOLS = ["AAPL", "GOOGL", "AMZN", "MSFT", "TSLA"]
+sample_stocks = [
+    {"symbol": "AAPL", "color": "#FF5733"},
+    {"symbol": "GOOGL", "color": "#33FF57"},
+    {"symbol": "AMZN", "color": "#3357FF"},
+    {"symbol": "MSFT", "color": "#FF33A1"},
+    {"symbol": "TSLA", "color": "#A133FF"},
+    {"symbol": "META", "color": "#33FFF3"},
+    {"symbol": "NFLX", "color": "#FF8C33"},
+    {"symbol": "NVDA", "color": "#8CFF33"},
+    {"symbol": "BABA", "color": "#338CFF"},
+    {"symbol": "DIS", "color": "#FF3333"},
+]
 
-# GLOBAL event to control streaming
 streaming_active_event = asyncio.Event()
-streaming_active_event.set()  # Initially streaming is allowed
+streaming_active_event.set()  # Allow streaming initially
 
 async def stock_data_generator():
     while streaming_active_event.is_set():
-        for i, symbol in enumerate(MOCK_SYMBOLS):
-            price = round(random.uniform(100 + i * 50, 1500 - i * 100), 2)
-            timestamp = datetime.utcnow().isoformat()
-            color = f"hsl({(i * 72) % 360}, 70%, 50%)"  # Generate a unique color
+        current_time = datetime.utcnow().isoformat()
 
-            data = {"symbol": symbol, "price": price, "timestamp": timestamp, "color": color}
-            logger.info(f"Generated stock data: {data}")
-            yield data
+        for stock in sample_stocks:
+            price = round(random.uniform(100, 1500), 2)
+            data = {
+                "symbol": stock["symbol"],
+                "price": price,
+                "timestamp": current_time,
+                "color": stock["color"]
+            }
 
-        await asyncio.sleep(1)
+            # Send each stock as an individual SSE event
+            yield f"data: {json.dumps(data)}\n\n"
+
+            # Optional: small delay between stocks to smooth streaming
+            await asyncio.sleep(0.1)
+
+        await asyncio.sleep(1.5)  # After one round of all stocks, small wait before next batch
