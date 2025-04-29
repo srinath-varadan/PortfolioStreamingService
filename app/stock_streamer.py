@@ -27,8 +27,8 @@ async def stock_data_generator():
 
             await asyncio.sleep(1)
     except asyncio.CancelledError:
-        logger.info("Stock data generator task was cancelled.")
-        raise
+        logger.info("Client disconnected. Stopping stock data generator.")
+        # Gracefully exit the generator when the client disconnects
     except Exception as e:
         logger.exception(f"Unexpected error in stock_data_generator: {e}")
         raise
