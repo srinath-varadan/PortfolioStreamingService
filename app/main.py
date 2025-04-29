@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
 from app.stock_streamer import stock_data_generator, streaming_active_event
 from app.logger import logger
 import asyncio
@@ -30,6 +31,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    if request.method == "POST":
+        body = await request.body()
+        logger.info(f"Payload: {body.decode('utf-8')}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
 
 @app.get("/stream/stocks", summary="Stream stock data in real-time")
 async def stream_stock_data():
