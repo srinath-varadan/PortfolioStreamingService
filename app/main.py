@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request
-from app.stock_streamer import stock_data_generator, streaming_active_event
+from app.stock_streamer import stock_data_generator, stock_streaming_active_event, loki_streaming_active_event
 from app.logger import logger
 import asyncio
 import json
@@ -87,11 +87,45 @@ async def stream_stock_data():
             content={"error": "An error occurred during streaming."}
         )
 
+# Loki log streaming endpoint
+from app.stock_streamer import loki_log_stream
+
+@app.get("/stream/loki", summary="Stream Loki logs in real-time")
+async def stream_loki_logs():
+    try:
+        async def event_generator():
+            try:
+                async for log in loki_log_stream(username="1198057", password="glc_eyJvIjoiMTQxNDE3NiIsIm4iOiJ3cml0ZWxvZ3Mtd3JpdGVsb2dzdG9rZW4iLCJrIjoiQ3hUMWRvYzFNOTRhTDA5NjhEajVIako4IiwibSI6eyJyIjoidXMifX0="):
+                    yield f"data: {json.dumps(log)}\n\n"
+            except asyncio.CancelledError:
+                logger.info("Client disconnected during Loki streaming.")
+                raise
+            except Exception as e:
+                logger.exception(f"Error in Loki event generator: {e}")
+                raise
+
+        logger.info("Loki log streaming started")
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+    except Exception as e:
+        logger.exception(f"Error during Loki log streaming: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "An error occurred during Loki log streaming."}
+        )
+
+
 @app.post("/stop", summary="Stop streaming stock data")
 async def stop_streaming():
-    streaming_active_event.clear()  # ✅ This will stop all existing generators
+    stock_streaming_active_event.clear()  # ✅ This will stop all existing generators
     logger.info("Streaming manually stopped by API call")
     return {"message": "Streaming stopped"}
+
+# New endpoint to stop Loki streaming
+@app.post("/stop-loki", summary="Stop streaming Loki logs")
+async def stop_loki_streaming():
+    loki_streaming_active_event.clear()
+    logger.info("Loki log streaming manually stopped by API call")
+    return {"message": "Loki log streaming stopped"}
 
 @app.get("/metrics")
 async def metrics():
