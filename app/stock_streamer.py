@@ -21,7 +21,6 @@ async def stock_data_generator():
             timestamp = datetime.utcnow().isoformat()
 
             data = {"symbol": symbol, "price": price, "timestamp": timestamp}
-            logger.info(f"Generated stock data: {data}")
             yield data
 
             await asyncio.sleep(1)
@@ -72,7 +71,6 @@ async def loki_log_stream(job_name="logaggregator-ai-analysis", loki_url="https:
                 for stream in logs:
                     for entry in stream.get("values", []):
                         ts, log_line = entry
-                        logger.info(f"Loki log line: {log_line}")
                         yield {"log": log_line}
                         start_ns = max(start_ns, int(ts) + 1)
 
