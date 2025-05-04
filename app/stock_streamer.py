@@ -51,7 +51,7 @@ async def loki_log_stream(job_name="logaggregator-ai-analysis", loki_url="https:
 
             query = f'{{job="{job_name}"}}'
             url = f"{loki_url}/loki/api/v1/query_range"
-            start_ns = int((time.time() - 2 * 86400) * 1_000_000_000)  # Start from 48 hours ago
+            start_ns = int((time.time() - 30 * 86400) * 1_000_000_000)  # Start from 30 days ago
 
             logger.info(f"Starting Loki log polling for query: {query}")
             while loki_streaming_active_event.is_set():
