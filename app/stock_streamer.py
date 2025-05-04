@@ -71,6 +71,10 @@ async def loki_log_stream(job_name="logaggregator-ai-analysis", loki_url="https:
                 for stream in logs:
                     for entry in stream.get("values", []):
                         ts, log_line = entry
+                        if log_line.startswith("```json") and log_line.endswith("```"):
+                            log_line = log_line[7:-3].strip()
+                        if "AI Analysis Failed" in log_line:
+                            continue
                         yield {"log": log_line}
                         start_ns = max(start_ns, int(ts) + 1)
 
